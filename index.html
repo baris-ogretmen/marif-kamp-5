@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TMV Yazılı Sınav Kampı - Mobil Sürüm</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tmvBlue: '#1a365d',
+                        tmvRed: '#e53e3e',
+                        tmvGold: '#d69e2e'
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #f0f4f8; -webkit-tap-highlight-color: transparent; }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Mobile Bottom Nav */
+        .bottom-nav { background: #ffffff; border-top: 1px solid #e2e8f0; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 0; color: #718096; transition: 0.2s; font-size: 0.75rem; font-weight: 600; }
+        .nav-item.active { color: #1a365d; border-top: 3px solid #e53e3e; margin-top: -1px; }
+        .nav-item i { font-size: 1.25rem; margin-bottom: 4px; }
+
+        /* Exam Options */
+        .opt-btn { transition: all 0.2s; border: 2px solid #e2e8f0; background: white; text-align: left; width: 100%; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-weight: 600; color: #2d3748; }
+        .opt-btn:active { transform: scale(0.98); }
+        .opt-btn.correct { border-color: #38a169; background-color: #f0fff4; color: #22543d; }
+        .opt-btn.wrong { border-color: #e53e3e; background-color: #fff5f5; color: #742a2a; }
+
+        /* Flashcards */
+        .flip-card { background-color: transparent; width: 100%; height: 250px; perspective: 1000px; }
+        .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .flip-card.is-flipped .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1.5rem; border-radius: 12px; border: 2px solid #cbd5e0; }
+        .flip-card-front { background-color: #ffffff; color: #1a365d; }
+        .flip-card-back { background-color: #1a365d; color: #ffffff; transform: rotateY(180deg); overflow-y: auto; }
+        
+        .ai-loading { display: inline-block; width: 16px; height: 16px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Subject Cards */
+        .subject-card { background: white; border-left: 4px solid #d69e2e; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <header class="bg-tmvBlue text-white shadow-md sticky top-0 z-40">
+        <div class="bg-tmvRed text-center py-1 text-xs font-bold tracking-wider flex justify-center items-center gap-2">
+            <i class="fa-solid fa-hourglass-half"></i> 11 NİSAN'A KALAN: <span id="countdown">Hesaplanıyor...</span>
+        </div>
+        <div class="px-4 py-3 flex items-center">
+            <i class="fa-solid fa-graduation-cap text-tmvGold text-2xl mr-3"></i>
+            <div>
+                <h1 class="text-lg font-bold leading-tight">TMV Yazılı Kampı</h1>
+                <p class="text-xs text-gray-300">Amfi 6 - Hukuk Fakültesi</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow overflow-y-auto pb-20 p-4">
+
+        <section id="tab-info" class="tab-content block fade-in">
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200 mb-4">
+                <h2 class="text-xl font-bold text-tmvBlue mb-4 border-b pb-2"><i class="fa-solid fa-clipboard-list mr-2 text-tmvRed"></i>Sınav Kuralları</h2>
+                <ul class="space-y-3 text-sm text-gray-700 font-medium">
+                    <li class="flex items-start"><i class="fa-solid fa-print text-gray-400 mt-1 mr-2 w-4"></i> Giriş belgesi yok, e-postanın çıktısını kapıda göster.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-id-card text-gray-400 mt-1 mr-2 w-4"></i> T.C. Kimlik / Ehliyet / Pasaport zorunlu.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-mobile-screen-button text-red-500 mt-1 mr-2 w-4"></i> Telefon tamamen kapalı olacak. Tutanak affı yok.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-clock text-gray-400 mt-1 mr-2 w-4"></i> En geç 09:30'da orada ol. 30 dk geç kalan alınmaz, ilk 30 dk çıkılmaz.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-pencil text-gray-400 mt-1 mr-2 w-4"></i> Kurşun kalem ve silgini kendin götür.</li>
+                </ul>
+            </div>
+            
+            <div class="bg-tmvBlue text-white rounded-xl p-5 shadow-sm text-center">
+                <i class="fa-solid fa-bullseye text-3xl text-tmvGold mb-2"></i>
+                <h3 class="font-bold text-lg mb-2">Hedef 120 Dakika</h3>
+                <p class="text-sm text-gray-300">Bu tatilde sadece geçmiş çıkmış soruların mantığına odaklanıyoruz. Konu Anlatımı sekmesine geç.</p>
+                <button onclick="switchTab('tab-notes')" class="mt-4 bg-tmvGold text-tmvBlue font-bold py-2 px-6 rounded-full w-full">Hap Bilgilere Başla <i class="fa-solid fa-arrow-right ml-1"></i></button>
+            </div>
+        </section>
+
+        <section id="tab-notes" class="tab-content hidden fade-in">
+            <h2 class="text-2xl font-bold text-tmvBlue mb-4">Çıkması Kesin Konular</h2>
+            
+            <div class="subject-card border-l-tmvRed">
+                <h3 class="font-bold text-lg text-tmvBlue mb-2"><i class="fa-solid fa-scale-balanced mr-2"></i>1. TMV Mevzuatı (6721 Sayılı)</h3>
+                <p class="text-sm text-gray-700 mb-2"><strong>Kuruluş:</strong> 17 Haziran 2016. MEB harici yurt dışında okul açmaya tek yetkili.</p>
+                <p class="text-sm text-gray-700 mb-2"><strong>Mütevelli Heyeti:</strong> En üst karar organıdır, <strong>12 üyeden</strong> oluşur.</p>
+                <p class="text-sm text-gray-700"><strong>Yönetim Kurulu:</strong> Yürütme (operasyon) organıdır, <strong>7 üyeden</strong> oluşur.</p>
+            </div>
+
+            <div class="subject-card border-l-blue-500">
+                <h3 class="font-bold text-lg text-tmvBlue mb-2"><i class="fa-solid fa-language mr-2"></i>2. Yabancılara Türkçe & CEFR</h3>
+                <p class="text-sm text-gray-700 mb-2"><strong>İletişimsel Yaklaşım:</strong> TMV'nin temelidir. Dilbilgisi kuralları tahtaya yazılıp ezberletilmez. Öğrenci pazar, hastane gibi görevlerle dili <em>işlevsel</em> kullanır.</p>
+                <p class="text-sm text-gray-700 mb-2"><strong>A1-A2 (Temel):</strong> Kendini tanıtır, basit ihtiyaçlar.<br><strong>B1-B2 (Bağımsız):</strong> Fikir belirtir, akıcı iletişim kurar.<br><strong>C1-C2 (Yetkin):</strong> Mecaz, deyim, akademik makale.</p>
+            </div>
+
+            <div class="subject-card border-l-green-500">
+                <h3 class="font-bold text-lg text-tmvBlue mb-2"><i class="fa-solid fa-brain mr-2"></i>3. ÖYT Taktikleri</h3>
+                <p class="text-sm text-gray-700 mb-2"><strong>Yapılandırmacılık:</strong> Bilgi nesnel değildir, özneldir. Öğrenci zihninde kendi kurar. Öğretmen sadece "ortam düzenleyici ve rehberdir."</p>
+                <p class="text-sm text-gray-700"><strong>Proje Temelli vs PDÖ:</strong> Projede süreç sonunda mutlaka <em>"Somut bir ürün/sergi"</em> çıkar. Probleme Dayalı'da ise sadece senaryoya zihinsel çözüm (rapor) üretilir.</p>
+            </div>
+
+            <div class="subject-card border-l-purple-500">
+                <h3 class="font-bold text-lg text-tmvBlue mb-2"><i class="fa-solid fa-chess-knight mr-2"></i>4. Sözel Mantık</h3>
+                <p class="text-sm text-gray-700">Zihinden çözmeye çalışma! <strong>Sabit olanı (Günler, Katlar, Aylar, Sıralar) daima tablonun EN ÜST sütununa yaz.</strong> Kişileri veya dersleri iç kısımlara yerleştir.</p>
+            </div>
+            
+            <button onclick="switchTab('tab-exam')" class="bg-tmvBlue text-white font-bold py-3 rounded-lg w-full mt-2 shadow-md">
+                YZ Denemelerine Geç <i class="fa-solid fa-laptop-code ml-2"></i>
+            </button>
+        </section>
+
+        <section id="tab-flashcards" class="tab-content hidden fade-in">
+            <h2 class="text-xl font-bold text-tmvBlue mb-4 text-center">Sınav Sabahı Tekrarı</h2>
+            
+            <div class="flip-card mb-6" id="flashcard" onclick="flipCard()">
+                <div class="flip-card-inner" id="flashcard-inner">
+                    <div class="flip-card-front">
+                        <i class="fa-solid fa-rotate text-3xl text-gray-300 mb-4"></i>
+                        <h3 id="card-front-text" class="text-lg font-bold text-center px-4">...</h3>
+                        <span class="absolute bottom-4 text-xs text-gray-500">Çevirmek için dokun</span>
+                    </div>
+                    <div class="flip-card-back">
+                        <p id="card-back-text" class="text-lg font-bold text-center px-4 leading-relaxed">...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                <button onclick="prevCard()" class="p-3 text-tmvBlue"><i class="fa-solid fa-chevron-left text-xl"></i></button>
+                <span class="font-bold text-sm text-gray-600" id="card-counter">Kart 1 / 10</span>
+                <button onclick="nextCard()" class="p-3 text-tmvBlue"><i class="fa-solid fa-chevron-right text-xl"></i></button>
+            </div>
+        </section>
+
+        <section id="tab-exam" class="tab-content hidden fade-in">
+            <div id="exam-intro">
+                <h2 class="text-2xl font-bold text-tmvBlue mb-4">Özel Deneme Üret</h2>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Müfredat Konusu:</label>
+                    <select id="exam-topic-select" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-tmvBlue bg-gray-50 mb-4 font-medium text-sm">
+                        <option value="KARMA">📝 Tam Kapsam Karma (5 Soru)</option>
+                        <option value="ALAN">📚 Türkçe Alan Bilgisi (5 Soru)</option>
+                        <option value="EĞİTİM">🧠 ÖYT ve Yabancılara Türkçe (5 Soru)</option>
+                        <option value="MANTIK">🧩 Sözel Mantık (3 Soru)</option>
+                        <option value="TMV">🌍 TMV Kanunu ve Gen. Kültür (5 Soru)</option>
+                    </select>
+                    <button id="ai-gen-btn" onclick="generateAIExam()" class="w-full bg-tmvRed text-white font-bold py-3 rounded-lg shadow-md flex justify-center items-center">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Soruları Hazırla
+                    </button>
+                </div>
+                <div class="text-center text-xs text-gray-500">
+                    <p>Çözülen: <span id="stat-total" class="font-bold text-tmvBlue">0</span> | Doğru: <span id="stat-correct" class="font-bold text-green-600">0</span></p>
+                </div>
+            </div>
+
+            <div id="exam-interface" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <span id="question-counter" class="bg-tmvBlue text-white px-3 py-1 rounded-full font-bold text-xs">1/5</span>
+                    <span class="text-red-600 font-bold text-sm bg-red-100 px-3 py-1 rounded-full"><i class="fa-solid fa-clock"></i> <span id="exam-timer-display">--:--</span></span>
+                </div>
+                
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+                    <h3 id="question-text" class="text-base font-bold text-gray-800 leading-relaxed whitespace-pre-wrap">Soru Yükleniyor...</h3>
+                </div>
+                
+                <div id="options-container" class="space-y-2 mb-4"></div>
+
+                <div id="ai-explanation-container" class="hidden mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <h4 class="font-bold text-tmvBlue text-sm mb-2"><i class="fa-solid fa-robot mr-1"></i> Çözüm Analizi</h4>
+                    <div id="ai-explanation-text" class="text-xs text-gray-700 leading-relaxed"></div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="ai-explain-btn" onclick="explainCurrentQuestion()" class="hidden flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg text-sm">
+                        Açıkla
+                    </button>
+                    <button id="next-btn" onclick="nextQuestion()" class="hidden flex-1 bg-tmvGold text-tmvBlue font-bold py-3 rounded-lg text-sm">
+                        Sonraki
+                    </button>
+                    <button id="finish-btn" onclick="finishExam()" class="hidden flex-1 bg-green-600 text-white font-bold py-3 rounded-lg text-sm">
+                        Bitir
+                    </button>
+                </div>
+            </div>
+
+            <div id="exam-results" class="hidden text-center py-8">
+                <div id="score-icon" class="text-5xl mb-3"></div>
+                <h2 class="text-2xl font-bold text-tmvBlue mb-1">Deneme Bitti</h2>
+                <p class="text-gray-500 text-sm mb-6">Toplam Soru: <span id="res-total"></span></p>
+                
+                <div class="flex justify-center gap-4 mb-8">
+                    <div class="bg-green-100 p-4 rounded-xl w-24">
+                        <span class="block text-2xl font-bold text-green-600" id="correct-count">0</span>
+                        <span class="text-xs font-bold text-green-800">Doğru</span>
+                    </div>
+                    <div class="bg-red-100 p-4 rounded-xl w-24">
+                        <span class="block text-2xl font-bold text-red-600" id="wrong-count">0</span>
+                        <span class="text-xs font-bold text-red-800">Yanlış</span>
+                    </div>
+                </div>
+                <button onclick="resetExam()" class="bg-tmvBlue text-white font-bold py-3 w-full rounded-lg shadow-md">
+                    Yeni Deneme Üret
+                </button>
+            </div>
+        </section>
+
+        <section id="tab-settings" class="tab-content hidden fade-in">
+            <h2 class="text-2xl font-bold text-tmvBlue mb-4">Bağlantı Ayarları</h2>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                <p class="text-xs text-gray-500 mb-4">Soru üretimi için Gemini API bilgilerinizi girin.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">API Anahtarı</label>
+                        <input type="password" id="api-key-input" class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:border-tmvBlue focus:outline-none text-sm" placeholder="AIzaSy...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Model Adı</label>
+                        <input type="text" id="model-input" class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:border-tmvBlue focus:outline-none text-sm" value="gemini-2.5-flash">
+                    </div>
+                    <button onclick="saveSettings()" class="w-full bg-tmvBlue text-white font-bold py-3 rounded-lg mt-2">Kaydet</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <nav class="bottom-nav fixed bottom-0 w-full flex justify-around z-50">
+        <button class="nav-item active" onclick="switchTab('tab-info', this)">
+            <i class="fa-solid fa-house"></i> Bilgi
+        </button>
+        <button class="nav-item" onclick="switchTab('tab-notes', this)">
+            <i class="fa-solid fa-book-open"></i> Notlar
+        </button>
+        <button class="nav-item" onclick="switchTab('tab-flashcards', this)">
+            <i class="fa-solid fa-layer-group"></i> Kartlar
+        </button>
+        <button class="nav-item" onclick="switchTab('tab-exam', this)">
+            <i class="fa-solid fa-laptop-code"></i> Sınav
+        </button>
+        <button class="nav-item" onclick="switchTab('tab-settings', this)">
+            <i class="fa-solid fa-gear"></i> Ayar
+        </button>
+    </nav>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            updateStatsUI();
+            updateCountdown();
+            setInterval(updateCountdown, 60000); // Dakikada bir güncelle
+            initFlashcards();
+        });
+
+        // Tab Switcher
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(c => { c.classList.add('hidden'); c.classList.remove('block'); });
+            const selectedTab = document.getElementById(tabId);
+            selectedTab.classList.remove('hidden');
+            selectedTab.classList.add('block');
+            
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            if(btnElement) {
+                btnElement.classList.add('active');
+            } else {
+                const targetBtn = document.querySelector(`.nav-item[onclick*="${tabId}"]`);
+                if(targetBtn) targetBtn.classList.add('active');
+            }
+            window.scrollTo(0,0);
+        }
+
+        // Countdown
+        function updateCountdown() {
+            const examDate = new Date("2026-04-11T10:00:00").getTime();
+            const now = new Date().getTime();
+            const distance = examDate - now;
+            if (distance < 0) { document.getElementById("countdown").innerText = "SINAV GÜNÜ!"; return; }
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            document.getElementById("countdown").innerText = `${days} Gün ${hours} Saat`;
+        }
+
+        // Stats
+        let stats = { solved: parseInt(localStorage.getItem('tmv_solved')) || 0, correct: parseInt(localStorage.getItem('tmv_correct')) || 0 };
+        function updateStatsUI() {
+            document.getElementById('stat-total').innerText = stats.solved;
+            document.getElementById('stat-correct').innerText = stats.correct;
+        }
+
+        // Settings & API
+        let userApi = { key: "", model: "gemini-2.5-flash" };
+        function loadSettings() {
+            userApi.key = localStorage.getItem('tmv_key') || "";
+            userApi.model = localStorage.getItem('tmv_model') || "gemini-2.5-flash";
+            document.getElementById('api-key-input').value = userApi.key;
+            document.getElementById('model-input').value = userApi.model;
+        }
+        function saveSettings() {
+            userApi.key = document.getElementById('api-key-input').value.trim();
+            userApi.model = document.getElementById('model-input').value.trim() || "gemini-2.5-flash";
+            localStorage.setItem('tmv_key', userApi.key);
+            localStorage.setItem('tmv_model', userApi.model);
+            alert("Ayarlar Kaydedildi.");
+        }
+
+        // Fetch Logic
+        async function fetchAI(prompt, isJson) {
+            if (!userApi.key) { switchTab('tab-settings'); alert("Lütfen API Anahtarınızı girin."); return; }
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${userApi.model}:generateContent?key=${userApi.key}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: "Sen TMV sınav komisyonunda soru hazırlayan profesyonelsin." }] }
+            };
+
+            if(isJson) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY", items: {
+                            type: "OBJECT",
+                            properties: {
+                                q: { type: "STRING" },
+                                options: { type: "ARRAY", items: { type: "STRING" } },
+                                a: { type: "INTEGER" }
+                            }, required: ["q", "options", "a"]
+                        }
+                    }
+                };
+            }
+
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!res.ok) throw new Error("API Hatası");
+            const data = await res.json();
+            const text = data.candidates[0].content.parts[0].text;
+            return isJson ? JSON.parse(text) : text;
+        }
+
+        // AI Exam Engine
+        let examState = { questions: [], currentIndex: 0, score: 0, answered: false, timer: 0, interval: null };
+
+        async function generateAIExam() {
+            const btn = document.getElementById('ai-gen-btn');
+            btn.innerHTML = '<span class="ai-loading mr-2"></span> Yükleniyor...';
+            btn.disabled = true;
+
+            const topic = document.getElementById('exam-topic-select').value;
+            let prmpt = "";
+            
+            if(topic === "KARMA") { prmpt = "TMV Türkçe öğretmeni sınavı için zorlu 5 soruluk deneme: 1 Mantık, 1 Mevzuat, 1 Alan, 2 ÖYT."; examState.timer = 5 * 120; }
+            else if(topic === "ALAN") { prmpt = "Türkçe alan bilgisi (dilbilgisi, ses olayları) üzerinden ÖABT ayarında 5 zor soru."; examState.timer = 5 * 90; }
+            else if(topic === "EĞİTİM") { prmpt = "ÖYT ve Yabancılara Türkçe (CEFR, İletişimsel) üzerinden 5 adet vaka/senaryo sorusu."; examState.timer = 5 * 90; }
+            else if(topic === "MANTIK") { prmpt = "ALES formatında tablo çizmeyi gerektiren zorlu bir sözel mantık senaryosu ve buna bağlı 3 soru."; examState.timer = 3 * 180; }
+            else { prmpt = "Türkiye Maarif Vakfı (6721 kanun) ve uluslararası genel kültürden 5 detaylı soru."; examState.timer = 5 * 60; }
+
+            try {
+                const qs = await fetchAI(prmpt, true);
+                if(qs && qs.length > 0) {
+                    examState.questions = qs; examState.currentIndex = 0; examState.score = 0;
+                    document.getElementById('exam-intro').classList.add('hidden');
+                    document.getElementById('exam-results').classList.add('hidden');
+                    document.getElementById('exam-interface').classList.remove('hidden');
+                    startTimer();
+                    loadQuestion();
+                }
+            } catch(e) {
+                alert("Soru üretilemedi. API veya bağlantınızı kontrol edin.");
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Soruları Hazırla';
+                btn.disabled = false;
+            }
+        }
+
+        function startTimer() {
+            clearInterval(examState.interval);
+            updateTimerUI();
+            examState.interval = setInterval(() => {
+                examState.timer--; updateTimerUI();
+                if(examState.timer <= 0) { clearInterval(examState.interval); alert("Süre bitti!"); finishExam(); }
+            }, 1000);
+        }
+        function updateTimerUI() {
+            const m = Math.floor(examState.timer / 60).toString().padStart(2, '0');
+            const s = (examState.timer % 60).toString().padStart(2, '0');
+            document.getElementById('exam-timer-display').innerText = `${m}:${s}`;
+        }
+
+        function loadQuestion() {
+            examState.answered = false;
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('finish-btn').classList.add('hidden');
+            document.getElementById('ai-explain-btn').classList.add('hidden');
+            document.getElementById('ai-explanation-container').classList.add('hidden');
+            
+            const q = examState.questions[examState.currentIndex];
+            document.getElementById('question-counter').innerText = `${examState.currentIndex + 1}/${examState.questions.length}`;
+            document.getElementById('question-text').innerText = q.q;
+
+            const box = document.getElementById('options-container'); box.innerHTML = '';
+            const labels = ['A', 'B', 'C', 'D', 'E'];
+            
+            q.options.forEach((opt, i) => {
+                const b = document.createElement('button');
+                b.className = 'opt-btn flex items-center';
+                b.onclick = () => checkAns(i, b);
+                b.innerHTML = `<span class="bg-gray-100 text-gray-500 w-8 h-8 flex justify-center items-center rounded mr-3 text-sm">${labels[i]}</span><span class="flex-grow text-sm">${opt}</span>`;
+                box.appendChild(b);
+            });
+        }
+
+        function checkAns(idx, btn) {
+            if(examState.answered) return;
+            examState.answered = true;
+            const q = examState.questions[examState.currentIndex];
+            const btns = document.querySelectorAll('.opt-btn');
+            btns.forEach(b => b.disabled = true);
+            
+            stats.solved++;
+            if(idx === q.a) { stats.correct++; examState.score++; btn.classList.add('correct'); } 
+            else { btn.classList.add('wrong'); if(btns[q.a]) btns[q.a].classList.add('correct'); }
+            
+            localStorage.setItem('tmv_solved', stats.solved); localStorage.setItem('tmv_correct', stats.correct);
+            updateStatsUI();
+
+            if(examState.currentIndex < examState.questions.length - 1) document.getElementById('next-btn').classList.remove('hidden');
+            else document.getElementById('finish-btn').classList.remove('hidden');
+            document.getElementById('ai-explain-btn').classList.remove('hidden');
+        }
+
+        async function explainCurrentQuestion() {
+            const btn = document.getElementById('ai-explain-btn');
+            const box = document.getElementById('ai-explanation-container');
+            const txt = document.getElementById('ai-explanation-text');
+            btn.innerHTML = '<span class="ai-loading"></span>'; btn.disabled = true;
+            
+            const q = examState.questions[examState.currentIndex];
+            try {
+                const res = await fetchAI(`Şu soruyu pedagojik olarak kısaca analiz et. Doğru: ${q.options[q.a]}. Soru: ${q.q}`, false);
+                txt.innerHTML = res.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                box.classList.remove('hidden');
+            } catch(e) { txt.innerHTML = "Açıklama yüklenemedi."; box.classList.remove('hidden'); }
+            finally { btn.innerHTML = 'Açıkla'; btn.disabled = false; }
+        }
+
+        function nextQuestion() { examState.currentIndex++; loadQuestion(); }
+        function finishExam() {
+            clearInterval(examState.interval);
+            document.getElementById('exam-interface').classList.add('hidden');
+            document.getElementById('exam-results').classList.remove('hidden');
+            document.getElementById('res-total').innerText = examState.questions.length;
+            document.getElementById('correct-count').innerText = examState.score;
+            document.getElementById('wrong-count').innerText = examState.questions.length - examState.score;
+            const icn = document.getElementById('score-icon');
+            icn.innerHTML = (examState.score / examState.questions.length) > 0.6 ? '<i class="fa-solid fa-trophy text-tmvGold"></i>' : '<i class="fa-solid fa-book text-gray-400"></i>';
+        }
+        function resetExam() { document.getElementById('exam-results').classList.add('hidden'); document.getElementById('exam-intro').classList.remove('hidden'); }
+
+        // Flashcards
+        const cards = [
+            { f: "TMV Kuruluş Kanunu Numarası?", b: "6721 Sayılı Kanun (2016)" },
+            { f: "TMV En Üst Karar Organı?", b: "Mütevelli Heyeti (12 Üye)" },
+            { f: "Sözel Mantık sorusunda 'Günler, Katlar, Aylar' nereye yazılır?", b: "Tablonun EN ÜST sütununa (Sabit Değişken)" },
+            { f: "Yapılandırmacılık'ta öğretmenin rolü nedir?", b: "Bilgi aktarıcı değil, Rehber ve Ortam Düzenleyicidir." },
+            { f: "Proje Temelli Öğrenmenin en belirgin farkı nedir?", b: "Sürecin sonunda mutlaka SOMUT BİR ÜRÜN ortaya konmasıdır." },
+            { f: "İletişimsel Yaklaşımın (TMV'nin kullandığı) amacı nedir?", b: "Kuralları ezberletmek değil, dili görev/durum içinde 'işlevsel' kullandırmaktır." }
+        ];
+        let cardIdx = 0;
+        function initFlashcards() { renderCard(); }
+        function renderCard() {
+            document.getElementById('card-front-text').innerText = cards[cardIdx].f;
+            document.getElementById('card-back-text').innerText = cards[cardIdx].b;
+            document.getElementById('card-counter').innerText = `Kart ${cardIdx + 1} / ${cards.length}`;
+            document.getElementById('flashcard').classList.remove('is-flipped');
+        }
+        function flipCard() { document.getElementById('flashcard').classList.toggle('is-flipped'); }
+        function nextCard() { cardIdx = (cardIdx + 1) % cards.length; renderCard(); }
+        function prevCard() { cardIdx = (cardIdx - 1 + cards.length) % cards.length; renderCard(); }
+    </script>
+</body>
+</html>
